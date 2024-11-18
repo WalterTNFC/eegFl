@@ -107,7 +107,32 @@ for i, (subset, params) in enumerate(zip(dataset_parts, param_sets)):
     processed_datasets.append(new_dataset)
 ```
 
-### Carregar o dataset
+### Criação de janelas de tempo
+
+A função ***extractionWindow*** tem o objetivo criar "janelas" que correspondem aos eventos de interesse no sinal de EEG.
+
+```python
+def extractionWindow(dataset):
+  # A janela começa a ser registrada meio segundo antes do evento de interesse 
+  trial_start_offset_seconds = -0.5
+  # Extração de frequência do conjunto de dados de entrada
+  sfreq = dataset.datasets[0].raw.info["sfreq"]
+  # Verificação da frequencia
+  assert all([ds.raw.info["sfreq"] == sfreq for ds in dataset.datasets])
+  # Deslocamento em amostras para o início da janela de dados
+  trial_start_offset_samples = int(trial_start_offset_seconds * sfreq)
+
+  # Divide o conjunto de dados em janelas de tempo, com base em eventos específicos
+  windows_dataset = create_windows_from_events(
+      dataset,
+      trial_start_offset_samples=trial_start_offset_samples,
+      trial_stop_offset_samples=0,
+      preload=True,
+  )
+
+
+  return windows_dataset
+```
 
 ### Resultado
 ![Resultado](./figures/Figure_1.png)
