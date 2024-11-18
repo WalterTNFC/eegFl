@@ -21,18 +21,16 @@ federated learning"
 - **Contribuição Inovadora**:
   - Primeira solução end-to-end para enfrentar o desafio de heterogeneidade nos dados de EEG em BCI.
 
-<div style="text-align: center;">
-  <img src="./figures/Captura%20de%20tela%20de%202024-11-17%2016-49-01.png" width="500"/>
-</div>
+![FLEEG](./figures/Captura%20de%20tela%20de%202024-11-17%2016-49-01.png)
 
 ## Proposta
 
 Federar modelo proposto em: [**How to train, test and tune your model?**](https://braindecode.org/stable/auto_examples/model_building/plot_how_train_test_and_tune.html#sphx-glr-auto-examples-model-building-plot-how-train-test-and-tune-py). Este tutorial mostra como treinar, ajustar e testar adequadamente seus modelos de aprendizado profundo com o [**Braindecode**](https://braindecode.org/stable/index.html). Usaremos o conjunto de dados [**BCIC IV 2a**](https://braindecode.org/stable/auto_examples/model_building/plot_how_train_test_and_tune.html#id5) como exemplo de demonstração. **Os eventos considerados nos dados são apenas as 4 classes alvo (esquerda, direita, pé, língua).**
 
 ### Braindecode
-<div style="text-align: center;">
-  <img src="./figures/brainDeCode.png" width="400"/>
-</div>
+![BrainDeCode](./figures/brainDeCode.png)
+
+
 O Braindecode é uma ferramenta open-source em Python para decodificação de dados cerebrais EEG com modelos de aprendizado profundo. Aplicações:
 -   Pré-processamento
 -   Visualização de dados
