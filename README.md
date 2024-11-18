@@ -134,5 +134,157 @@ def extractionWindow(dataset):
   return windows_dataset
 ```
 
+### Divisão dos dados:
+```python
+def split_windows_dataset(windows_dataset):
+  splitted = windows_dataset.split("session")
+  if('0train' in splitted):
+    return splitted['0train']
+  else:
+    return splitted['1test']
+```
+
+### Treinamento do modelo:
+[ShallowNet](https://www.researchgate.net/figure/The-Shallow-Convolutional-Network-architecture-proposed-for-the-BCI-Competition-IV_fig2_355779357)
+```python
+    from braindecode.util import set_random_seeds
+from braindecode.models import ShallowFBCSPNet
+
+def create_model(shape):
+  seed = 20200220
+
+  n_classes = 4
+  classes = list(range(n_classes))
+  # Extract number of chans and time steps from dataset
+  n_channels = shape[0]
+  input_window_samples = shape[1]
+
+  model = ShallowFBCSPNet(
+      n_channels,
+      n_classes,
+      input_window_samples=input_window_samples,
+      final_conv_length="auto",
+  )
+
+  return model
+```
+
+### Instanciando os clientes:
+
+Mapear cada Id de cliente para um dataset específico
+```python 
+    def get_client_dataset(id):
+    client_datasets = {
+        0: processed_datasets[0],
+        1: processed_datasets[1],
+        2: processed_datasets[2],
+        3: processed_datasets[3],
+        4: processed_datasets[4]
+    }
+    return client_datasets.get(id)
+```
+
+Cria uma instância do cliente federado com o modelo e o dataset atribuídos ao cliente.
+
+```python
+def numpyclient_fn(context):
+    # Usando a função de mapeamento para pegar os dados baseados no client_id do context
+    client_id = context.node_config["partition-id"]
+    dataset_to_use = get_client_dataset(client_id)
+
+    windows_dataset = extractionWindow(dataset_to_use)
+    model = create_model(windows_dataset[0][0].shape)
+    # Continua a configuração do cliente
+    client = FlowerNumPyClient(model, windows_dataset)
+    return client.to_client()
+```
+
+-   get_parameters: Extrai os parâmetros do modelo como uma lista de arrays NumPy.
+-   set_parameters: Restaura os parâmetros do modelo a partir de uma lista de arrays, convertendo-os de volta para tensores PyTorch e mantendo a associação com os nomes dos parâmetros.
+```python
+from collections import OrderedDict
+import torch
+
+def get_parameters(model):
+    return [val.cpu().numpy() for _, val in model.state_dict().items()]
+
+
+def set_parameters(model, parameters):
+    params_dict = zip(model.state_dict().keys(), parameters)
+    state_dict = OrderedDict({k: torch.Tensor(v) for k, v in params_dict})
+    model.load_state_dict(state_dict, strict=True)
+```
+
+```python
+from skorch.callbacks import LRScheduler
+from braindecode import EEGClassifier
+import torch
+from collections import OrderedDict
+
+class FlowerNumPyClient(fl.client.NumPyClient):
+    # Constantes de hiperparâmetros
+    LR = 0.0625 * 0.01
+    WEIGHT_DECAY = 0
+    BATCH_SIZE = 64
+    N_EPOCHS = 25
+
+    def __init__(self, model, windows_dataset):
+        self.model = model
+        self.window = windows_dataset
+        self.train_set = split_windows_dataset(self.window)
+
+        print('Inicializando o classificador')
+        self.clf = self._initialize_classifier()
+
+    def _initialize_classifier(self):
+        """Configura o EEGClassifier apenas uma vez para otimizar o código."""
+        return EEGClassifier(
+            self.model,
+            criterion=torch.nn.NLLLoss,
+            optimizer=torch.optim.AdamW,
+            train_split=None,
+            optimizer__lr=self.LR,
+            optimizer__weight_decay=self.WEIGHT_DECAY,
+            batch_size=self.BATCH_SIZE,
+            callbacks=[
+                "accuracy",
+                ("lr_scheduler", LRScheduler("CosineAnnealingLR", T_max=self.N_EPOCHS - 1)),
+            ],
+            device='cpu',
+            classes=list(range(4)),  # 4 classes no dataset
+            max_epochs=self.N_EPOCHS,
+        )
+
+    def get_parameters(self, config):
+        print('Obtendo parâmetros do modelo')
+        return get_parameters(self.model)
+
+    def set_weights(self, net, parameters):
+        params_dict = zip(net.state_dict().keys(), parameters)
+        state_dict = OrderedDict({k: torch.tensor(v) for k, v in params_dict})
+        net.load_state_dict(state_dict, strict=True)
+
+    # Treinamento
+    def fit(self, parameters, config):
+        print('Iniciando o treinamento (fit)')
+        self.set_weights(self.model, parameters)
+        
+        # Treinamento do classificador
+        self.clf.fit(self.train_set, y=None)
+
+        return self.get_parameters(self.model), len(self.window), {}
+
+    # Avaliação
+    def evaluate(self, parameters, config):
+        print('Iniciando a avaliação')
+        self.set_weights(self.model, parameters)
+        
+        # Avaliação do modelo após o treinamento
+        y_test = self.train_set.get_metadata().target
+        test_acc = self.clf.score(self.train_set, y=y_test)
+        print(f"Test acc: {(test_acc * 100):.2f}%")
+        
+        return float(test_acc), len(self.train_set), {"accuracy": float(test_acc)}
+```
 ### Resultado
 ![Resultado](./figures/Figure_1.png)
