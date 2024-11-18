@@ -237,7 +237,6 @@ class FlowerNumPyClient(fl.client.NumPyClient):
         self.clf = self._initialize_classifier()
 
     def _initialize_classifier(self):
-        """Configura o EEGClassifier apenas uma vez para otimizar o código."""
         return EEGClassifier(
             self.model,
             criterion=torch.nn.NLLLoss,
@@ -286,5 +285,31 @@ class FlowerNumPyClient(fl.client.NumPyClient):
         
         return float(test_acc), len(self.train_set), {"accuracy": float(test_acc)}
 ```
+
+### Definição do meu servidor
+```python
+def server_fn(context):
+    config = fl.server.ServerConfig(num_rounds=1)
+    return fl.server.ServerAppComponents(config=config)
+
+
+# Create ServerApp
+server = fl.server.ServerApp(server_fn=server_fn)
+```
+
+### Iniciar a simulação
+```python
+NUM_PARTITIONS = 5
+
+# Run simulation
+# Flower ClientApp
+app = fl.client.ClientApp(numpyclient_fn)
+fl.simulation.run_simulation(
+    server_app=server,
+    client_app= app,
+    num_supernodes=NUM_PARTITIONS,
+)
+
+``````
 ### Resultado
 ![Resultado](./figures/Figure_1.png)
