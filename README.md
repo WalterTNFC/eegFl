@@ -1,3 +1,5 @@
+# Federated Learning Aplicado a BCI
+
 ## Inspiração
 
 Artigo: "Aggregating intrinsic information to enhance BCI performance through
