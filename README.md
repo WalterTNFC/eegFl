@@ -108,4 +108,4 @@ for i, (subset, params) in enumerate(zip(dataset_parts, param_sets)):
 ### Carregar o dataset
 
 ### Resultado
-![Resultado](./figures/fl_acuracia.png)
+![Resultado](./figures/Figure_1.png)
